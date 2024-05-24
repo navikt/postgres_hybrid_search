@@ -117,7 +117,7 @@ streng med kommaseparerte kategorier.
 
 Tabellen som vi oppretter inneholder derfor følgende:
 
-```sql
+```sqlpostgresql
 CREATE TABLE text_store (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     content TEXT,
@@ -187,7 +187,7 @@ indeks][postgres_gin] på denne kolonnen.
 
 Denne indeksen opprettes med følgende SQL:
 
-```sql
+```sqlpostgresql
 CREATE INDEX ON text_store USING gin (fts);
 ```
 
@@ -215,7 +215,7 @@ minne og prosessorkraft][pgvector_index_build].
 Vi oppretter indeksen med Cosine distance (legg merke til `vector_cosine_ops`)
 på følgende måte:
 
-```sql
+```sqlpostgresql
 CREATE INDEX ON text_store USING hnsw (embedding vector_cosine_ops);
 ```
 
@@ -243,7 +243,7 @@ søket vårt.
 Vi kommer her til å vise hvordan man oppretter en Postgres funksjon, men det
 samme kan oppnåes ved å benytte en vanlig SQL spørring.
 
-```sql
+```sqlpostgresql
 CREATE OR REPLACE FUNCTION hybrid_search(
     query_text TEXT,
     query_embedding VECTOR(2000),
@@ -330,7 +330,7 @@ veldig få $<10$ resultater.
 
 Funksjonen over kan så brukes i SQL som en hvilken som helst annen funksjon:
 
-```sql
+```sqlpostgresql
 SELECT
     *
 FROM
