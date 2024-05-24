@@ -4,7 +4,7 @@ project:
 
 format:
   html:
-    highlight-style: a11y
+    highlight-style: atom-one
     other-links:
       - text: KBS veiledning
         href: https://data.ansatt.nav.no/story/58aa330c-3a72-470e-926f-22e029719879/index.html
