@@ -25,10 +25,10 @@ søk tyngre enn tekster som bare forekommer i et søk.
 
 I _RRF_ utfører vi X (i vårt tilfelle 2) søk og slår sammen resultatet fra disse
 søkene. Hvert søk gir tekstene som returneres en rangering ($rangering_i$), i
-[ligning @eq-rang] tar vi hensyn til at et treff ikke nødvendigvis finnes i et
+[ligning @eq-rang] tar vi hensyn til at et treff ikke nødvendigvis finnes i alle
 søk, og vi summerer deretter de forskjellige rangeringene til én endelig
-sum ($score$) i [ligning @eq-rrf]. Denne summen kan så sorteres for å fine
-endelig rangering.
+sum ($score$) i [ligning @eq-rrf]. Denne summen kan så brukes for sortering for
+å fine endelig rangering.
 
 $$
 rang_i =
@@ -45,11 +45,11 @@ $$ {#eq-rrf}
 ::: {.callout}
 ## Eksempel på _RRF_
 Vi kan se for oss at vi har en tekst som har fått rangering $5$ og $4$ fra to
-forskjellige søk. For å finne den endelige rangeringen summerer vi disse
-resultatene med $\frac{1}{5} + \frac{1}{4} = 0.2 + 0.25 = 0.45$.
+forskjellige søk. For å finne $score$ summerer vi disse resultatene på følgende
+måte $\frac{1}{5} + \frac{1}{4} = 0.2 + 0.25 = 0.45$.
 
 Hvis vi har en annen tekst i det samme hybridsøket som fikk rangering $3$ fra
-det ene søket og ikke ble funnet i det andre søket får vi en _RRF_ sum
+det ene søket og ikke ble funnet i det andre søket får vi en $score$ på
 $\frac{1}{3} + 0 = 0.33 + 0 = 0.33$.
 
 Når vi så rangerer begge disse tekstene ser vi at den første teksten blir
@@ -86,18 +86,17 @@ Vi kan gjenbruke eksempelet vårt over, men nå rangere den andre teksten til å
 være det første treffet for et av søkene.
 
 Vi har fortsatt en tekst som har fått rangering $5$ og $4$, som fortsatt gir en
-_RRF_ sum på $0.45$, men nå sier vi at for den andre teksten har den fått
+$score$ på $0.45$, men nå sier vi at for den andre teksten har den fått
 rangering $1$ for et søk og ikke til stedet i det andre søket. Tekst to har
-derfor en oppdatert _RRF_ sum på $\frac{1}{1} + 0 = 1$ og vil derfor være
-rangert høyere enn den første teksten bare fordi den er høyt oppe i et enkelt
-søk.
+derfor en oppdatert $score$ på $\frac{1}{1} + 0 = 1$ og vil derfor være rangert
+høyere enn den første teksten bare fordi den er høyt oppe i et enkelt søk.
 
-Siden vi ønsker at en tekst som er tilstede i kun et søk skal jevnes ut bruker
-vi en utjevningskonstant $k=60$. For den første teksten får vi en ny _RRF_ sum
-på $\frac{1}{60 + 5} + \frac{1}{60 + 4} ≈ 0.031$, mens for den andre teksten får
-vi en _RRF_ sum på $\frac{1}{60 + 1} ≈ 0.016$. Vi ser at med
-utjevningskonstanten vår vil den første teksten fortsatt være rangert over den
-andre teksten og konstanten hadde ønsket effekt.
+Siden vi ønsker at en tekst som er tilstede i kun et søk skal jevnes ut prøver
+vi en utjevningskonstant $k=60$. For den første teksten får vi en ny $score$ på
+$\frac{1}{60 + 5} + \frac{1}{60 + 4} ≈ 0.031$, mens for den andre teksten får vi
+en $score$ på $\frac{1}{60 + 1} ≈ 0.016$. Vi ser at med utjevningskonstanten vår
+vil den første teksten fortsatt være rangert over den andre teksten og
+konstanten hadde ønsket effekt.
 :::
 
 ## Oppsett på Postgres
