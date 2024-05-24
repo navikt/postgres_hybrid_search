@@ -1,0 +1,353 @@
+# Oppsett for hybridsøk med PostgreSQL
+
+Dette dokumentet inneholder noen tanker om hvordan man kan sette opp et
+fullverdig hybridsøk med PostgreSQL. Vi bruker en tenkt kunnskapsbase som har
+informasjon om NAV tjenester som grunnlaget for informasjonen som skal inn i
+PostgreSQL databasen vi oppretter i dette dokumentet.
+
+Dette dokumentet er basert på følgende referanser:
+
+- [supabase veiledning om hybridsøk](https://supabase.com/docs/guides/ai/hybrid-search)
+- [`pgvector` eksempel på hybridsøk](https://github.com/pgvector/pgvector-python/blob/master/examples/hybrid_search_rrf.py)
+
+## Forutsetninger
+
+- Vi antar at ønske for søket er å kunne benytte resultatet sammen med en
+språkmodell i et _KBS_ system.
+- Vi antar at det finnes tilgang til en embedding modell som kan generere
+embedding vektorer for tekstene.
+
+## Reciprocal Ranked Fusion (RRF)
+
+For hybridsøket kommer vi til å benytte [Reciprocal Ranked Fusion
+(_RRF_)][rrf_paper]. Tanken bak _RRF_ er å vekte tekster som forekommer i flere
+søk tyngre enn tekster som bare forekommer i et søk.
+
+I _RRF_ utfører vi X (i vårt tilfelle 2) søk og slår sammen resultatet fra disse
+søkene. Hvert søk gir tekstene som returneres en rangering ($rangering_i$), i
+[ligning @eq-rang] tar vi hensyn til at et treff ikke nødvendigvis finnes i et
+søk, og vi summerer deretter de forskjellige rangeringene til én endelig
+sum ($score$) i [ligning @eq-rrf]. Denne summen kan så sorteres for å fine
+endelig rangering.
+
+$$
+rang_i =
+\begin{cases}
+    \frac{1}{rangering_i} & \text{hvis treff} \\
+    0 & \text{ellers}
+\end{cases}
+$${#eq-rang}
+
+$$
+score = \sum_{i=1}^{sok}rang_i
+$$ {#eq-rrf}
+
+::: {.callout}
+## Eksempel på _RRF_
+Vi kan se for oss at vi har en tekst som har fått rangering $5$ og $4$ fra to
+forskjellige søk. For å finne den endelige rangeringen summerer vi disse
+resultatene med $\frac{1}{5} + \frac{1}{4} = 0.2 + 0.25 = 0.45$.
+
+Hvis vi har en annen tekst i det samme hybridsøket som fikk rangering $3$ fra
+det ene søket og ikke ble funnet i det andre søket får vi en _RRF_ sum
+$\frac{1}{3} + 0 = 0.33 + 0 = 0.33$.
+
+Når vi så rangerer begge disse tekstene ser vi at den første teksten blir
+rangert øverst, $0.45 > 0.33$, fordi _RRF_ vekter treff som dukker opp i flere
+søk høyere.
+:::
+
+### Utjevningskonstant $k$
+
+For å forhindre at tekster som er rangert veldig høyt i et søk "overvinner" de
+andre søkene er det vanlig å ta med en utjevningskonstant i RRF. Vi endrer
+beregningen i [ligning @eq-rang] til å inkludere en konstant $k$ som gjør at alle
+treff blir jevnet ut. Effekten av denne konstanten er å jevne ut slik at treff
+høyt oppe i kun et søk potensielt rangeres lavere enn treff som dukker opp i
+flere søk.
+
+$$
+rang_i =
+\begin{cases}
+    \frac{1}{k + rangering_i} & \text{hvis treff} \\
+    0 & \text{ellers}
+\end{cases}
+$${#eq-rang-smooth}
+
+Vi benytter så [ligning @eq-rrf] til å beregne _RRF_ med utjenvingskonstanten.
+
+Hvilken verdi $k$ skal ha er litt avhengig av hvor mye et høyt treff i et søk
+skal jevnes ut. Det settes vanligvis til en lav, $<100$, konstant verdi. Et
+godt utgangspunkt kan være $60$, før mer testing er gjort.
+
+::: {.callout collapse="true"}
+## Eksempel på _RRF_ med utjevning
+Vi kan gjenbruke eksempelet vårt over, men nå rangere den andre teksten til å
+være det første treffet for et av søkene.
+
+Vi har fortsatt en tekst som har fått rangering $5$ og $4$, som fortsatt gir en
+_RRF_ sum på $0.45$, men nå sier vi at for den andre teksten har den fått
+rangering $1$ for et søk og ikke til stedet i det andre søket. Tekst to har
+derfor en oppdatert _RRF_ sum på $\frac{1}{1} + 0 = 1$ og vil derfor være
+rangert høyere enn den første teksten bare fordi den er høyt oppe i et enkelt
+søk.
+
+Siden vi ønsker at en tekst som er tilstede i kun et søk skal jevnes ut bruker
+vi en utjevningskonstant $k=60$. For den første teksten får vi en ny _RRF_ sum
+på $\frac{1}{60 + 5} + \frac{1}{60 + 4} ≈ 0.031$, mens for den andre teksten får
+vi en _RRF_ sum på $\frac{1}{60 + 1} ≈ 0.016$. Vi ser at med
+utjevningskonstanten vår vil den første teksten fortsatt være rangert over den
+andre teksten og konstanten hadde ønsket effekt.
+:::
+
+## Oppsett på Postgres
+
+Vi skal nå se hvordan _RRF_ kan implementeres i Postgres. Oppsette burde være
+veldig fleksibelt og kunne tilpasse de fleste situasjoner.
+
+### Tabelloppsett
+
+Det første som vi må definere er hvordan tabellen med tekstene skal se ut.
+Hvilke kolonner som gir mening å benytte er styrt av hva som er tilgjengelig,
+men som vi skal se så anbefales det å ta med så mye metadata som mulig.
+
+Fra vår tenkte kunnskapsbasen antar vi at vi har tre felter vi kan benytte for å
+utføre hybridsøket vårt. `content` som representerer selve innholdet, `title`
+som representerer tittelen på hele dokumentet og `data_categories` som er en
+streng med kommaseparerte kategorier.
+
+Tabellen som vi oppretter inneholder derfor følgende:
+
+```sql
+CREATE TABLE text_store (
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    content TEXT,
+    title TEXT,
+    data_categories TEXT,
+    fts TSVECTOR GENERATED ALWAYS AS (
+        setweight(to_tsvector('norwegian', content), 'C') ||
+        setweight(to_tsvector('norwegian', title), 'A') ||
+        setweight(to_tsvector('norwegian', data_categories), 'B')
+    ) STORED,
+    embedding VECTOR(2000)
+);
+```
+
+::: {.column-margin}
+Hvis en av tekstkolonnene kan være `NULL` anbefales det å benytte
+`to_tsvector('norwegian', coalesce(KOLONNE, ''))`.
+:::
+
+Her gjør vi flere ting på en gang så la oss bryte ned de to mest ukjente
+kolonnene.
+
+`fts` er vår "feature vector" som baserer seg på innholdet i de tre feltene
+våre. Den er av typen [`tsvector`][postgres_tsvector] som er en innebygget
+vektor type i Postgres som representerer normaliserte søkeord. Vi kombinerer
+innholdet fra flere kolonner med `||` operatoren som slår sammen `tsvector`-ene
+til én vektor. Vi benytter videre [`setweight`][postgres_tsvector] på disse
+vektorene for å angi hvor mye vekt Postgres skal legge til når den søker
+gjennom. I dette eksempelet har vi satt innholdet til å ha lavest vekt, mens
+tittel har fått størst vekt, dette må selvsagt tilpasses etter hvilke type
+metadata som er tilgjengelig.
+
+::: {.callout-note collapse="true"}
+## `tsvector` tar ikke hensyn til semantikk
+For fulltekstsøk så vil større tekstbolker kunne overrepresentere ord og
+innhold. Et NAV/NKS eksempel kan være en artikkel om sykepenger som inneholder
+en setning om dagpenger. I et slik tilfelle vil både "sykepenger" og "dagpenger"
+havne i `tsvector`-en med samme vekting, men det betyr ikke at "dagpenger" var
+like viktig for artikkelen. I vår eksempel tabell over har vi derfor vektet ned
+innhold og vektet opp metadata som tittel.
+:::
+
+`embedding` er vår vektor embedding som krever [`pgvector`][pgvector], vi har
+satt den til en størrelse på $2000$ som er maks for `pgvector` med en indeks,
+som gir oss mye frihet samtidig som vi burde kunne søke hurtig gjennom
+dokumentene. Størrelsen må tilpasses til embedding modellen som brukes, men for
+`text-embedding-3-large` med en størrelses reduksjon til $2000$ burde dette
+oppsettet fungere godt.
+
+::: {.column-margin}
+Merk at på CloudSQL støtes kun `pgvector` versjon `0.6.0`. I versjon `0.7.0` har
+`pgvector` fått støtte for halfvec (`f16`) som gir opp til $4000$ dimensjoner
+uten nevneverdig tap av dekning.
+:::
+
+### Indeks på kolonner
+
+For at søke skal kunne utføres raskere kan vi opprette indekser på utvalgte
+kolonner. I hovedsak kommer vi til å opprette indekser på `fts` og `embedding`
+siden disse brukes i søk.
+
+#### Fulltekstsøk
+
+For at Postgres skal kunne søke gjennom tekstvektorene i `fts` på raskest mulig
+måte kommer vi til å opprette en ["generalized inverted (_GIN_)"
+indeks][postgres_gin] på denne kolonnen.
+
+Denne indeksen opprettes med følgende SQL:
+
+```sql
+CREATE INDEX ON text_store USING gin (fts);
+```
+
+Denne indeksen _må_ opprettes for at det skal være mulig å søke på `fts`
+kolonnen.
+
+#### Vektorsøk
+
+`pgvector` har også støtte for å opprette indekser på `VECTOR` kolonner. Her er
+det viktig å merke seg hvilken [sammenlingningsoperator][pgvector_ops] man
+ønsker å bruke slik at indeksen gir ønsket resultat. I de fleste tilfeller så
+vil [Cosine similarity][wiki_cosine] være et godt valg. Før vi viser
+opprettelsen av indeksen er det viktig å påpeke at det ikke er et krav om å ha
+en indeks for å søke gjennom embedding vektorene (i motsetning til
+fulltekstsøket som krever en indeks). Uten en indeks vil `pgvector` gjøre en
+sammenligning mellom alle embedding vektorene i tabellen, noe som kan være en
+god strategi hvis det er relativt få ($<5000$) rader.
+
+::: {.column-margin}
+Merk at selve indeksen ikke krever så mye, men opprettelsen og oppdatering av
+indeksen kan ta en del tid. Ytelse på indeks genereringen kan forbedres med [mer
+minne og prosessorkraft][pgvector_index_build].
+:::
+
+Vi oppretter indeksen med Cosine distance (legg merke til `vector_cosine_ops`)
+på følgende måte:
+
+```sql
+CREATE INDEX ON text_store USING hnsw (embedding vector_cosine_ops);
+```
+
+::: {.callout-tip collapse="true"}
+## `pgvector` operator med normalisert embedding modell
+Ved bruk av [OpenAI sin embedding modell][openai_distance] vil vektorene være
+normalisert til lengde $1$. Dette gir noen fordeler ved beregning av cosine
+similarity fordi cosine similarity da kan beregnes som et indreprodukt. Fordelen
+med dette er at indreprodukt er raskere å beregne enn cosine similarity.
+
+Man kan da bruke `vector_ip_ops` og `<#>` (inner produkt) operatoren istedenfor
+`vector_cosine_ops` og `<=>` (cosine similarity) operatorene i `pgvector` og få
+akkurat det samme resultatet, bare raskere.
+:::
+
+Dette oppretter en [`HNSW` indeks][pgvector_ops] som er en _ikke eksakt_
+næremestenabo søkealgoritme. Denne gir best avveining mellom hastighet og
+dekning (`recall`).
+
+### Hybridsøk
+
+Tilslutt må vi benytte tabellen og indeksene vi har opprettet til å utføre _RRF_
+søket vårt.
+
+Vi kommer her til å vise hvordan man oppretter en Postgres funksjon, men det
+samme kan oppnåes ved å benytte en vanlig SQL spørring.
+
+```sql
+CREATE OR REPLACE FUNCTION hybrid_search(
+    query_text TEXT,
+    query_embedding VECTOR(2000),
+    match_count INT,
+    full_text_weight FLOAT = 1.0,
+    semantic_weight FLOAT = 1.0,
+    rrf_k INT = 60
+)
+RETURNS SETOF texts
+LANGUAGE SQL
+AS $$
+WITH full_text AS (
+    SELECT
+        id,
+        -- Selv om 'ts_rank_cd' er en relativt dyr operasjon å bruke i en 'OVER'
+        -- burde det her gå greit fordi vi både begrenser antall treff, men også
+        -- bruker '@@' i 'WHERE'
+        row_number() OVER (ORDER BY ts_rank_cd(fts, websearch_to_tsquery(query_text)) DESC) AS rank_i
+    FROM
+        text_store
+    WHERE
+        -- '@@' er en "match" operasjon som sjekker om begge sidene passer
+        -- hverandre, mao. er det et treff fra 'query_text' i 'fts' kolonnen
+        fts @@ websearch_to_tsquery(query_text)
+    ORDER BY
+        rank_i
+    -- Merk at vi henter dobbelt så mange dokumenter som bruker etterspør, dette
+    -- gjøres for at rangeringen fra begge søk skal ha større sannsynlighet for
+    -- overlapp, som igjen resulterer i treff som er langt nede i begge kan
+    -- rangeres høyere enn treff som er høyere opp i bare et søk
+    LIMIT least(match_count, 30) * 2
+),
+semantic AS (
+    SELECT
+        id,
+        -- Merk at cosine distance rangeres med ASC. Altså lave verdier, nærme
+        -- 0, er bedre enn større verdier
+        row_number() OVER (ORDER BY embedding <=> query_embedding) AS rank_i,
+        1 - (embedding <=> query_embedding) AS cosine_similarity
+    FROM
+        text_store
+    ORDER BY
+        rank_i
+    -- Merk at vi henter dobbelt så mange dokumenter som bruker etterspør, dette
+    -- gjøres for at rangeringen fra begge søk skal ha større sannsynlighet for
+    -- overlapp, som igjen resulterer i treff som er langt nede i begge kan
+    -- rangeres høyere enn treff som er høyere opp i bare et søk
+    LIMIT least(match_count, 30) * 2
+)
+SELECT
+    text_store.id AS id,
+    text_store.title AS title,
+    text_store.data_categories AS categories,
+    text_store.content AS content,
+    -- TRUE/FALSE hvis det var treff i gitt søk
+    full_text.id != NULL AS full_text_hit,
+    semantic.id != NULL AS semantic_hit,
+    -- Merk at 'cosine_similarity' kan være 'NULL'
+    semantic.cosine_similarity AS cosine_similarity,
+    (
+        coalesce(1.0 / (rrf_k + full_text.rank_i), 0.0) * full_text_weight +
+        coalesce(1.0 / (rrf_k + semantic.rank_i), 0.0) * semantic_weight
+    ) AS score
+FROM
+    full_text
+    FULL OUTER JOIN semantic
+        ON full_text.id = semantic.id
+    INNER JOIN text_store
+        ON coalesce(full_text.id, semantic.id) = text_store.id
+ORDER BY
+    score DESC
+LIMIT
+    least(match_count, 30)
+$$;
+```
+
+::: {.column-margin}
+Merk at vi har benyttet `least(match_count, 30)` flere steder i søket. Dette er
+gjort fordi det er relativt dyrt å søke samtidig som man vanligvis trenger
+veldig få $<10$ resultater.
+:::
+
+---
+
+Funksjonen over kan så brukes i SQL som en hvilken som helst annen funksjon:
+
+```sql
+SELECT
+    *
+FROM
+    hybrid_search(
+        'Hva er samordning mellom dagpenger og sykepenger?', -- Spørring fra bruker
+        '[...]'::VECTOR(2000), -- Embedding vektor laget på bakgrunn av spørringen over
+        5 -- Antall tekster vi ønsker å få tilbake
+    )
+;
+```
+
+[openai_distance]: https://platform.openai.com/docs/guides/embeddings/which-distance-function-should-i-use
+[pgvector]: https://github.com/pgvector/pgvector
+[pgvector_index_build]: https://github.com/pgvector/pgvector?tab=readme-ov-file#index-build-time
+[pgvector_ops]: https://github.com/pgvector/pgvector?tab=readme-ov-file#hnsw
+[postgres_gin]: https://www.postgresql.org/docs/current/gin-intro.html
+[postgres_tsvector]: https://www.postgresql.org/docs/current/textsearch-features.html#TEXTSEARCH-MANIPULATE-TSVECTOR
+[rrf_paper]: https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf
+[wiki_cosine]: https://en.wikipedia.org/wiki/Cosine_similarity

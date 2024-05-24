@@ -1,0 +1,18 @@
+project:
+  render: 
+    - index.qmd
+
+format:
+  html:
+    highlight-style: a11y
+    other-links:
+      - text: KBS veiledning
+        href: https://data.ansatt.nav.no/story/58aa330c-3a72-470e-926f-22e029719879/index.html
+      - text: Sammenligning av vektordatabaser
+        href: https://data.ansatt.nav.no/story/e17a7b82-8721-4357-ba92-4c734f68e9f5/index.html
+    embed-resources: true
+    toc: true
+    toc-title: Innhold
+    theme:
+      light: flatly
+      dark: darkly
