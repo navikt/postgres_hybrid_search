@@ -1,0 +1,26 @@
+name: Bygg dokumentasjon
+
+on:
+    push:
+        branches:
+            - main
+
+jobs:
+    build-deploy:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout source
+              uses: actions/checkout@v4
+            - name: Install Quarto
+              uses: quarto-dev/quarto-actions/setup@v2
+            - name: Render project
+              uses: quarto-dev/quarto-actions/render@v2
+              with:
+                path: doc/
+            - name: Upload til cache
+              uses: actions/upload-artifact@v4
+              with:
+                name: index
+                path: doc/index.html
+                overwrite: true
