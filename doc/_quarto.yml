@@ -13,6 +13,8 @@ format:
     embed-resources: true
     toc: true
     toc-title: Innhold
+    language:
+      other-links-title: "Nyttige lenker"
     theme:
       light: flatly
       dark: darkly
