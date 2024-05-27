@@ -349,6 +349,7 @@ FROM
 ```
 
 [openai_distance]: https://platform.openai.com/docs/guides/embeddings/which-distance-function-should-i-use
+[openai_embedding]: https://platform.openai.com/docs/guides/embeddings
 [pgvector]: https://github.com/pgvector/pgvector
 [pgvector_index_build]: https://github.com/pgvector/pgvector?tab=readme-ov-file#index-build-time
 [pgvector_ops]: https://github.com/pgvector/pgvector?tab=readme-ov-file#hnsw
