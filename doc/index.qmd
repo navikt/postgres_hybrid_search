@@ -178,7 +178,12 @@ uten nevneverdig tap av dekning.
 
 For at søke skal kunne utføres raskere kan vi opprette indekser på utvalgte
 kolonner. I hovedsak kommer vi til å opprette indekser på `fts` og `embedding`
-siden disse brukes i søk.
+siden disse brukes i hybridsøket.
+
+::: {.column-margin}
+Det er selvsagt ikke noe i veien for å ha andre indekser enn de vi legger opp
+til her.
+:::
 
 #### Fulltekstsøk
 
