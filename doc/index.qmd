@@ -328,8 +328,8 @@ $$;
 
 ::: {.column-margin}
 Merk at vi har benyttet `least(match_count, 30)` flere steder i søket. Dette er
-gjort fordi det er relativt dyrt å søke samtidig som man vanligvis trenger
-veldig få $<10$ resultater.
+gjort fordi det er relativt dyrt å søke, samtidig som man vanligvis trenger
+veldig få ($<10$) resultater i en _KBS_ kontekst.
 :::
 
 ---
