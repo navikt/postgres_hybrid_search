@@ -23,12 +23,13 @@ For hybridsøket kommer vi til å benytte [Reciprocal Ranked Fusion
 (_RRF_)][rrf_paper]. Tanken bak _RRF_ er å vekte tekster som forekommer i flere
 søk tyngre enn tekster som bare forekommer i et søk.
 
-I _RRF_ utfører vi X (i vårt tilfelle 2) søk og slår sammen resultatet fra disse
-søkene. Hvert søk gir tekstene som returneres en rangering ($rangering_i$), i
-[ligning @eq-rang] tar vi hensyn til at et treff ikke nødvendigvis finnes i alle
-søk, og vi summerer deretter de forskjellige rangeringene til én endelig
-sum ($score$) i [ligning @eq-rrf]. Denne summen kan så brukes for sortering for
-å fine endelig rangering.
+I _RRF_ utfører vi $X$ (i vårt tilfelle $2$) søk og slår sammen resultatet fra disse
+søkene. Måten vi slår sammen resultatene er ved at hvert søk gir tekstene en
+rangering ($rangering_i$). Så, i [ligning @eq-rang], tar vi hensyn til at et
+treff ikke nødvendigvis finnes i alle søk. Og til slutt summerer vi de
+forskjellige rangeringene til én endelig sum ($score$) i [ligning @eq-rrf].
+Denne summen kan så brukes for å sortere tekstene for å fine endelig rangering
+for alle $X$ søk.
 
 $$
 rang_i =
