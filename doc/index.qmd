@@ -165,8 +165,8 @@ innhold og vektet opp metadata som tittel.
 satt den til en størrelse på $2000$ som er maks for `pgvector` med en indeks,
 som gir oss mye frihet samtidig som vi burde kunne søke hurtig gjennom
 dokumentene. Størrelsen må tilpasses til embedding modellen som brukes, men for
-`text-embedding-3-large` med en størrelses reduksjon til $2000$ burde dette
-oppsettet fungere godt.
+[`text-embedding-3-large`][openai_embedding] med en størrelses reduksjon til
+$2000$ burde dette oppsettet fungere godt.
 
 ::: {.column-margin}
 Merk at på CloudSQL støtes kun `pgvector` versjon `0.6.0`. I versjon `0.7.0` har
