@@ -233,7 +233,7 @@ similarity fordi cosine similarity da kan beregnes som et indreprodukt. Fordelen
 med dette er at indreprodukt er raskere å beregne enn cosine similarity.
 
 Man kan da bruke `vector_ip_ops` og `<#>` (inner produkt) operatoren istedenfor
-`vector_cosine_ops` og `<=>` (cosine similarity) operatorene i `pgvector` og få
+`vector_cosine_ops` og `<=>` (cosine distance) operatorene i `pgvector` og få
 akkurat det samme resultatet, bare raskere.
 :::
 
