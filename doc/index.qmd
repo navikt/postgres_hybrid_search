@@ -59,11 +59,11 @@ søk høyere.
 ### Utjevningskonstant $k$
 
 For å forhindre at tekster som er rangert veldig høyt i et søk "overvinner" de
-andre søkene er det vanlig å ta med en utjevningskonstant i RRF. Vi endrer
-beregningen i [ligning @eq-rang] til å inkludere en konstant $k$ som gjør at alle
-treff blir jevnet ut. Effekten av denne konstanten er å jevne ut slik at treff
-høyt oppe i kun et søk potensielt rangeres lavere enn treff som dukker opp i
-flere søk.
+andre søkene er det vanlig å ta med en utjevningskonstant i _RRF_. Vi endrer
+beregningen i [ligning @eq-rang] til å inkludere en konstant $k$ som gjør at
+alle treff blir jevnet ut. Effekten av denne konstanten er å jevne ut slik at
+treff høyt oppe i kun et søk potensielt rangeres lavere enn treff som dukker opp
+i flere søk.
 
 $$
 rang_i =
@@ -78,6 +78,12 @@ Vi benytter så [ligning @eq-rrf] til å beregne _RRF_ med utjenvingskonstanten.
 Hvilken verdi $k$ skal ha er litt avhengig av hvor mye et høyt treff i et søk
 skal jevnes ut. Det settes vanligvis til en lav, $<100$, konstant verdi. Et
 godt utgangspunkt kan være $60$, før mer testing er gjort.
+
+::: {.column-margin}
+Utjevningskonstanten $k=60$ er hentet fra [artikkelen som beskriver
+_RRF_][rrf_paper]. I artikkelen gjør forfatterne et enkelt parametersøk, som
+viser at $60$ er et godt utgangspunkt.
+:::
 
 ::: {.callout collapse="true"}
 ## Eksempel på _RRF_ med utjevning
