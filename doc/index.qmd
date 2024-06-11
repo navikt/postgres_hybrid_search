@@ -13,7 +13,7 @@ Dette dokumentet er basert på følgende referanser:
 ## Forutsetninger
 
 - Vi antar at ønske for søket er å kunne benytte resultatet sammen med en
-språkmodell i et _KBS_ system.
+språkmodell i et [_KBS_ system][kbs].
 - Vi antar at det finnes tilgang til en embedding modell som kan generere
 embedding vektorer for tekstene.
 
@@ -348,6 +348,7 @@ FROM
 ;
 ```
 
+[kbs]: https://data.ansatt.nav.no/story/58aa330c-3a72-470e-926f-22e029719879/index.html
 [openai_distance]: https://platform.openai.com/docs/guides/embeddings/which-distance-function-should-i-use
 [openai_embedding]: https://platform.openai.com/docs/guides/embeddings
 [pgvector]: https://github.com/pgvector/pgvector
