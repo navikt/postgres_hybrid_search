@@ -1,5 +1,3 @@
-# Oppsett for hybridsøk med PostgreSQL
-
 Dette dokumentet inneholder noen tanker om hvordan man kan sette opp et
 fullverdig hybridsøk med PostgreSQL. Vi bruker en tenkt kunnskapsbase som har
 informasjon om NAV tjenester som grunnlaget for informasjonen som skal inn i

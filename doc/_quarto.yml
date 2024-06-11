@@ -4,6 +4,7 @@ project:
 
 format:
   html:
+    title: "Hybridsøk i PostgreSQL"
     highlight-style: atom-one
     other-links:
       - text: KBS veiledning
