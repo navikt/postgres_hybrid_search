@@ -257,13 +257,21 @@ samme kan oppnåes ved å benytte en vanlig SQL spørring.
 CREATE OR REPLACE FUNCTION hybrid_search(
     query_text TEXT,
     query_embedding VECTOR(2000),
-    match_count INT,
+    match_count INTEGER,
     full_text_weight FLOAT = 1.0,
     semantic_weight FLOAT = 1.0,
-    rrf_k INT = 60
+    rrf_k INTEGER = 60
 )
-RETURNS SETOF texts
-LANGUAGE SQL
+RETURNS TABLE(
+    id INTEGER,
+    title TEXT,
+    categories TEXT,
+    content TEXT,
+    full_text_hit BOOLEAN,
+    semantic_hit BOOLEAN,
+    cosine_similarity FLOAT,
+    score INTEGER
+)
 AS $$
 WITH full_text AS (
     SELECT
@@ -327,7 +335,7 @@ ORDER BY
     score DESC
 LIMIT
     least(match_count, 30)
-$$;
+$$ LANGUAGE SQL;
 ```
 
 ::: {.column-margin}
