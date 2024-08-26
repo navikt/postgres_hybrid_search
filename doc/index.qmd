@@ -320,7 +320,9 @@ SELECT
     full_text.id != NULL AS full_text_hit,
     semantic.id != NULL AS semantic_hit,
     -- Merk at 'cosine_similarity' kan være 'NULL'
-    semantic.cosine_similarity AS cosine_similarity,
+    coalesce(semantic.cosine_similarity,
+             1 - (text_store.embedding <=> query_embedding)
+    ) AS cosine_similarity,
     (
         coalesce(1.0 / (rrf_k + full_text.rank_i), 0.0) * full_text_weight +
         coalesce(1.0 / (rrf_k + semantic.rank_i), 0.0) * semantic_weight
