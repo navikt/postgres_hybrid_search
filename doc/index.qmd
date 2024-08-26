@@ -279,13 +279,13 @@ WITH full_text AS (
         -- Selv om 'ts_rank_cd' er en relativt dyr operasjon å bruke i en 'OVER'
         -- burde det her gå greit fordi vi både begrenser antall treff, men også
         -- bruker '@@' i 'WHERE'
-        row_number() OVER (ORDER BY ts_rank_cd(fts, websearch_to_tsquery(query_text)) DESC) AS rank_i
+        row_number() OVER (ORDER BY ts_rank_cd(fts, websearch_to_tsquery('norwegian', query_text)) DESC) AS rank_i
     FROM
         text_store
     WHERE
         -- '@@' er en "match" operasjon som sjekker om begge sidene passer
         -- hverandre, mao. er det et treff fra 'query_text' i 'fts' kolonnen
-        fts @@ websearch_to_tsquery(query_text)
+        fts @@ websearch_to_tsquery('norwegian', query_text)
     ORDER BY
         rank_i
     -- Merk at vi henter dobbelt så mange dokumenter som bruker etterspør, dette
