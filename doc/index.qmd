@@ -8,6 +8,16 @@ Dette dokumentet er basert på følgende referanser:
 - [supabase veiledning om hybridsøk](https://supabase.com/docs/guides/ai/hybrid-search)
 - [`pgvector` eksempel på hybridsøk](https://github.com/pgvector/pgvector-python/blob/master/examples/hybrid_search_rrf.py)
 
+::: {.callout collapse="true"}
+## Changelog
+- **31.01.25**: Endret `rank` til `rank`
+    - Det var en bug i den originale versjonen, kopiert fra supabase, hvor koden
+    brukte `rank` for å ha en ID på rangen fra et undersøk. Dette kan gi
+    et skjevt bilde hvis flere treff skulle hatt den samme rangen fra et
+    undersøk. Ved å benytte `rank` får alle like treff den samme ID-en.
+- **26.08.24**: Utgitt
+:::
+
 ## Forutsetninger
 
 - Vi antar at ønske for søket er å kunne benytte resultatet sammen med en
@@ -279,7 +289,7 @@ WITH full_text AS (
         -- Selv om 'ts_rank_cd' er en relativt dyr operasjon å bruke i en 'OVER'
         -- burde det her gå greit fordi vi både begrenser antall treff, men også
         -- bruker '@@' i 'WHERE'
-        row_number() OVER (ORDER BY ts_rank_cd(fts, websearch_to_tsquery('norwegian', query_text)) DESC) AS rank_i
+        rank() OVER (ORDER BY ts_rank_cd(fts, websearch_to_tsquery('norwegian', query_text)) DESC) AS rank_i
     FROM
         text_store
     WHERE
@@ -299,7 +309,7 @@ semantic AS (
         id,
         -- Merk at cosine distance rangeres med ASC. Altså lave verdier, nærme
         -- 0, er bedre enn større verdier
-        row_number() OVER (ORDER BY embedding <=> query_embedding) AS rank_i,
+        rank() OVER (ORDER BY embedding <=> query_embedding) AS rank_i,
         1 - (embedding <=> query_embedding) AS cosine_similarity
     FROM
         text_store
