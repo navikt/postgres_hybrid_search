@@ -10,11 +10,12 @@ Dette dokumentet er basert på følgende referanser:
 
 ::: {.callout collapse="true"}
 ## Changelog
-- **31.01.25**: Endret `rank` til `rank`
+- **31.01.25**: Endret `row_number` til `rank`
     - Det var en bug i den originale versjonen, kopiert fra supabase, hvor koden
-    brukte `rank` for å ha en ID på rangen fra et undersøk. Dette kan gi
+    brukte `row_number` for å ha en ID på rangen fra et undersøk. Dette kan gi
     et skjevt bilde hvis flere treff skulle hatt den samme rangen fra et
-    undersøk. Ved å benytte `rank` får alle like treff den samme ID-en.
+    undersøk (mao. hvis treffene er like gode). Ved å benytte `rank` får alle
+    like treff den samme ID-en.
 - **26.08.24**: Utgitt
 :::
 
