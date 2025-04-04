@@ -18,7 +18,7 @@ jobs:
               uses: quarto-dev/quarto-actions/render@v2
               with:
                 path: doc/
-            - name: Last opp til Datamarkedsplassen
+            - name: Last opp internt
               uses: navikt/story-upload@v1
               with:
                 id: a02b3e56-a407-4dad-96c9-8b4425ea3906
@@ -26,9 +26,11 @@ jobs:
                 team_token: ${{ secrets.TEAM_TOKEN }}
                 env: prod
                 public: false
-            - name: Upload to cache
-              uses: actions/upload-artifact@v4
+            - name: Last opp offentlig
+              uses: navikt/story-upload@v1
               with:
-                name: doc
-                path: doc/*.html
-                overwrite: true
+                id: 758f8e87-bc62-44bb-b1bf-f5ce58bb44f7
+                dir: doc/
+                team_token: ${{ secrets.TEAM_TOKEN }}
+                env: prod
+                public: true
