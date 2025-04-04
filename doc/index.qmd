@@ -10,6 +10,7 @@ Dette dokumentet er basert på følgende referanser:
 
 ::: {.callout collapse="true"}
 ## Changelog
+- **04.04.25**: Endret antall treff man minst henter
 - **31.01.25**: Endret `row_number` til `rank`
     - Det var en bug i den originale versjonen, kopiert fra supabase, hvor koden
     brukte `row_number` for å ha en ID på rangen fra et undersøk. Dette kan gi
@@ -299,11 +300,9 @@ WITH full_text AS (
         fts @@ websearch_to_tsquery('norwegian', query_text)
     ORDER BY
         rank_i
-    -- Merk at vi henter dobbelt så mange dokumenter som bruker etterspør, dette
-    -- gjøres for at rangeringen fra begge søk skal ha større sannsynlighet for
-    -- overlapp, som igjen resulterer i treff som er langt nede i begge kan
-    -- rangeres høyere enn treff som er høyere opp i bare et søk
-    LIMIT least(match_count, 30) * 2
+    -- Vi henter minst 40 dokumenter fordi det er likt antall som pgvector henter
+    -- som standard (dvs. pgvector henter alltid 40 treff)
+    LIMIT greatest(match_count * 2, 40)
 ),
 semantic AS (
     SELECT
@@ -316,11 +315,9 @@ semantic AS (
         text_store
     ORDER BY
         rank_i
-    -- Merk at vi henter dobbelt så mange dokumenter som bruker etterspør, dette
-    -- gjøres for at rangeringen fra begge søk skal ha større sannsynlighet for
-    -- overlapp, som igjen resulterer i treff som er langt nede i begge kan
-    -- rangeres høyere enn treff som er høyere opp i bare et søk
-    LIMIT least(match_count, 30) * 2
+    -- Vi henter minst 40 dokumenter fordi det er likt antall som pgvector henter
+    -- som standard (dvs. pgvector henter alltid 40 treff)
+    LIMIT greatest(match_count * 2, 40)
 )
 SELECT
     text_store.id AS id,
@@ -347,14 +344,15 @@ FROM
 ORDER BY
     score DESC
 LIMIT
-    least(match_count, 30)
+    match_count
 $$ LANGUAGE SQL;
 ```
 
 ::: {.column-margin}
-Merk at vi har benyttet `least(match_count, 30)` flere steder i søket. Dette er
-gjort fordi det er relativt dyrt å søke, samtidig som man vanligvis trenger
-veldig få ($<10$) resultater i en _KBS_ kontekst.
+Merk at vi alltid henter minst $40$ treff fra søkene, dette tallet er basert på
+PGVector sin ["dynamic candidate
+list"](https://github.com/pgvector/pgvector?tab=readme-ov-file#query-options)
+som er det minste antallet treff PGVector uansett henter.
 :::
 
 ---
