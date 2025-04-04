@@ -25,7 +25,7 @@ jobs:
                 dir: doc/
                 team_token: ${{ secrets.TEAM_TOKEN }}
                 env: prod
-                public: true
+                public: false
             - name: Upload to cache
               uses: actions/upload-artifact@v4
               with:
